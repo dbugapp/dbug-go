@@ -5,6 +5,11 @@ import (
 )
 
 func main() {
+	basicExample()
+	stringExample()
+}
+
+func basicExample() {
 	dbug.Send(map[string]interface{}{
 		"message": "Hello from Go!",
 		"user": map[string]interface{}{
@@ -12,4 +17,8 @@ func main() {
 			"email": "hello@example.com",
 		},
 	})
+}
+
+func stringExample() {
+	dbug.Send("Hello from Go!")
 }
