@@ -100,31 +100,43 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 
 	case reflect.Struct:
 		result := map[string]interface{}{}
-		result["go_type"] = v.Type().Name()
+		structType := v.Type()
+		structTypeName := structType.String()
 
 		for i := 0; i < v.NumField(); i++ {
-			field := v.Type().Field(i)
-			if field.PkgPath != "" {
-				continue
-			}
+			field := structType.Field(i)
+			fieldName := field.Name
+			prefixedFieldName := fmt.Sprintf("%s.%s", structTypeName, fieldName)
 
-			fieldValue := v.Field(i)
-			if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
-				var rawValue interface{}
-				jsonBytes := fieldValue.Interface().(json.RawMessage)
-				if json.Unmarshal(jsonBytes, &rawValue) == nil {
-					result[field.Name] = rawValue
-				} else {
-					result[field.Name] = string(jsonBytes)
+			if field.PkgPath == "" {
+				fieldValue := v.Field(i)
+
+				if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
+					var rawValue interface{}
+					jsonBytes := fieldValue.Interface().(json.RawMessage)
+					if json.Unmarshal(jsonBytes, &rawValue) == nil {
+						result[prefixedFieldName] = rawValue
+					} else {
+						result[prefixedFieldName] = string(jsonBytes)
+					}
+					continue
 				}
-				continue
-			}
 
-			val, err := sanitize(fieldValue.Interface(), seen)
-			if err != nil {
-				return nil, err
+				val, err := sanitize(fieldValue.Interface(), seen)
+				if err != nil {
+					return nil, fmt.Errorf("failed to sanitize field %s: %w", prefixedFieldName, err)
+				}
+				result[prefixedFieldName] = val
+			} else {
+				var privateFieldValue string
+				fieldType := field.Type
+				if fieldType.Kind() == reflect.Array {
+					privateFieldValue = fmt.Sprintf("%s:%d", field.Name, fieldType.Len())
+				} else {
+					privateFieldValue = fmt.Sprintf("%s", fieldType.String())
+				}
+				result[prefixedFieldName] = privateFieldValue
 			}
-			result[field.Name] = val
 		}
 		return result, nil
 
