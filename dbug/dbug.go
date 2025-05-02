@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"reflect"
 	"time"
+
+	"gorm.io/datatypes" // Import the datatypes package
 )
 
 var endpoint = "http://127.0.0.1:53821"
@@ -45,6 +47,20 @@ func stringify(data interface{}) ([]byte, error) {
 }
 
 func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
+	if marshaler, ok := data.(json.Marshaler); ok {
+		bytes, err := marshaler.MarshalJSON()
+		if err == nil {
+			var resultInterface interface{}
+			if json.Unmarshal(bytes, &resultInterface) == nil {
+				return resultInterface, nil
+			}
+		}
+	}
+
+	if data == nil {
+		return nil, nil
+	}
+
 	v := reflect.ValueOf(data)
 
 	switch v.Kind() {
@@ -56,7 +72,10 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 		if seen[ptr] {
 			return "[circular]", nil
 		}
+
 		seen[ptr] = true
+		defer delete(seen, ptr)
+
 		return sanitize(v.Elem().Interface(), seen)
 
 	case reflect.Map:
@@ -82,15 +101,28 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 		return result, nil
 
 	case reflect.Struct:
-		result := map[string]interface{}{
-			"__class": v.Type().Name(),
-		}
+		result := map[string]interface{}{}
+		result["go_type"] = v.Type().Name()
+
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Type().Field(i)
 			if field.PkgPath != "" { // unexported
 				continue
 			}
-			val, err := sanitize(v.Field(i).Interface(), seen)
+
+			fieldValue := v.Field(i)
+			if fieldValue.Type() == reflect.TypeOf(datatypes.JSON{}) {
+				var rawValue interface{}
+				jsonBytes := fieldValue.Interface().(datatypes.JSON)
+				if json.Unmarshal(jsonBytes, &rawValue) == nil {
+					result[field.Name] = rawValue
+				} else {
+					result[field.Name] = string(jsonBytes)
+				}
+				continue
+			}
+
+			val, err := sanitize(fieldValue.Interface(), seen)
 			if err != nil {
 				return nil, err
 			}
