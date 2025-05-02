@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"time"
-
-	"gorm.io/datatypes" // Import the datatypes package
 )
 
 var endpoint = "http://127.0.0.1:53821"
@@ -106,14 +104,14 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 
 		for i := 0; i < v.NumField(); i++ {
 			field := v.Type().Field(i)
-			if field.PkgPath != "" { // unexported
+			if field.PkgPath != "" {
 				continue
 			}
 
 			fieldValue := v.Field(i)
-			if fieldValue.Type() == reflect.TypeOf(datatypes.JSON{}) {
+			if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
 				var rawValue interface{}
-				jsonBytes := fieldValue.Interface().(datatypes.JSON)
+				jsonBytes := fieldValue.Interface().(json.RawMessage)
 				if json.Unmarshal(jsonBytes, &rawValue) == nil {
 					result[field.Name] = rawValue
 				} else {
