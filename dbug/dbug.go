@@ -140,15 +140,41 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 		}
 		return result, nil
 
-	case reflect.Chan, reflect.Func, reflect.UnsafePointer:
+	case reflect.Chan, reflect.UnsafePointer:
 		return fmt.Sprintf("[%s]", v.Kind().String()), nil
+
+	case reflect.Func:
+		fnType := v.Type()
+		signature := fnType.String()
+
+		numIn := fnType.NumIn()
+		inTypes := make([]string, numIn)
+		for i := 0; i < numIn; i++ {
+			inTypes[i] = fnType.In(i).String()
+		}
+
+		numOut := fnType.NumOut()
+		outTypes := make([]string, numOut)
+		for i := 0; i < numOut; i++ {
+			outTypes[i] = fnType.Out(i).String()
+		}
+
+		funcDetails := map[string]interface{}{
+			"input_types":  inTypes,
+			"output_types": outTypes,
+			"is_variadic":  fnType.IsVariadic(),
+		}
+
+		result := map[string]interface{}{
+			signature: funcDetails,
+		}
+		return result, nil
 
 	default:
 		return data, nil
 	}
 }
 
-// SendTestable exposes stringified output for testing purposes.
 func SendTestable(payload interface{}) ([]byte, error) {
 	return stringify(payload)
 }
