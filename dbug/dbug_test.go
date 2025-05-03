@@ -76,7 +76,7 @@ func TestSerializeStructWithCircularReference(t *testing.T) {
 	b := &Node{Name: "B", Next: a}
 	a.Next = b
 
-	jsonBytes, err := dbug.SendTestable(a)
+	jsonBytes, err := dbug.GoTestable(a)
 	require.NoError(t, err)
 
 	var parsed map[string]interface{}
@@ -105,7 +105,7 @@ func TestSerializeNilAndBasicTypes(t *testing.T) {
 		"map":    map[string]int{"x": 1},
 	}
 
-	jsonBytes, err := dbug.SendTestable(data)
+	jsonBytes, err := dbug.GoTestable(data)
 	require.NoError(t, err)
 
 	var parsed map[string]interface{}
@@ -125,7 +125,7 @@ func TestSerializeNilAndBasicTypes(t *testing.T) {
 
 func TestSerializeFunctionDetailed(t *testing.T) {
 	fn := func(i int, s string) (bool, error) { return true, nil }
-	jsonBytes, err := dbug.SendTestable(fn)
+	jsonBytes, err := dbug.GoTestable(fn)
 	require.NoError(t, err)
 
 	var parsed map[string]interface{}
@@ -156,7 +156,7 @@ func TestSerializeChannelDetailed(t *testing.T) {
 		"nilChan":  chNil,
 	}
 
-	jsonBytes, err := dbug.SendTestable(payload)
+	jsonBytes, err := dbug.GoTestable(payload)
 	require.NoError(t, err)
 
 	var parsed map[string]interface{}
@@ -225,7 +225,7 @@ func TestSerializeStructPrivateFields(t *testing.T) {
 		privateArr:   [5]string{"a", "b"},
 	}
 
-	jsonBytes, err := dbug.SendTestable(s)
+	jsonBytes, err := dbug.GoTestable(s)
 	require.NoError(t, err)
 
 	var parsed map[string]interface{}

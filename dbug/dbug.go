@@ -235,7 +235,7 @@ func chanDirToString(dir reflect.ChanDir) string {
 	}
 }
 
-// SendTestable handles a single payload for testing.
-func SendTestable(payload interface{}) ([]byte, error) {
+// GoTestable handles a single payload for testing.
+func GoTestable(payload interface{}) ([]byte, error) {
 	return stringify(payload)
 }
