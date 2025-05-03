@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"time"
-
-	"gorm.io/datatypes" // Import the datatypes package
 )
 
 var endpoint = "http://127.0.0.1:53821"
@@ -18,24 +16,48 @@ func SetEndpoint(url string) {
 	endpoint = url
 }
 
-// Send serializes and sends the payload to the debug app.
-func Send(payload interface{}) {
-	jsonBytes, err := stringify(payload)
-	if err != nil {
-		jsonBytes, _ = json.MarshalIndent(map[string]string{
-			"error":  "Serialization failed",
-			"reason": err.Error(),
-		}, "", "  ")
-	}
-
-	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBytes))
-	if err != nil {
-		return
-	}
-
-	req.Header.Set("Content-Type", "application/json")
+// Go serializes and sends each payload individually to the Dbug app.
+func Go(payloads ...interface{}) {
+	// Create a single client to reuse for multiple payloads in one call
 	client := http.Client{Timeout: 500 * time.Millisecond}
-	_, _ = client.Do(req)
+
+	for _, payload := range payloads {
+		var jsonBytes []byte
+		var err error
+
+		// Attempt to stringify the current payload
+		jsonBytes, err = stringify(payload)
+		if err != nil {
+			// If stringify fails, create an error payload instead
+			jsonBytes, _ = json.MarshalIndent(map[string]string{
+				"_error_":  "Serialization failed during Send",
+				"_reason_": err.Error(),
+				// Maybe add type info if payload isn't nil?
+				// "_type_": reflect.TypeOf(payload).String(),
+			}, "", "  ")
+			// Note: We proceed to send this error payload
+		}
+
+		// Create and send the request for the current payload (or error payload)
+		req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBytes))
+		if err != nil {
+			// Log error creating request and continue to next payload
+			fmt.Printf("Dbug: Error creating request: %v\n", err)
+			continue
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		_, err = client.Do(req)
+		if err != nil {
+			// Log error sending request and continue to next payload
+			fmt.Printf("Dbug: Error sending request: %v\n", err)
+			continue
+		}
+		// Successfully sent payload (or error payload)
+
+		// Add a small delay between sending payloads
+		time.Sleep(5 * time.Millisecond)
+	}
 }
 
 func stringify(data interface{}) ([]byte, error) {
@@ -102,43 +124,118 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 
 	case reflect.Struct:
 		result := map[string]interface{}{}
-		result["go_type"] = v.Type().Name()
+		structType := v.Type()
+		structTypeName := structType.String()
 
 		for i := 0; i < v.NumField(); i++ {
-			field := v.Type().Field(i)
-			if field.PkgPath != "" { // unexported
-				continue
-			}
+			field := structType.Field(i)
+			fieldName := field.Name
+			prefixedFieldName := fmt.Sprintf("%s.%s", structTypeName, fieldName)
 
-			fieldValue := v.Field(i)
-			if fieldValue.Type() == reflect.TypeOf(datatypes.JSON{}) {
-				var rawValue interface{}
-				jsonBytes := fieldValue.Interface().(datatypes.JSON)
-				if json.Unmarshal(jsonBytes, &rawValue) == nil {
-					result[field.Name] = rawValue
-				} else {
-					result[field.Name] = string(jsonBytes)
+			if field.PkgPath == "" {
+				fieldValue := v.Field(i)
+
+				if fieldValue.Type() == reflect.TypeOf(json.RawMessage{}) {
+					var rawValue interface{}
+					jsonBytes := fieldValue.Interface().(json.RawMessage)
+					if json.Unmarshal(jsonBytes, &rawValue) == nil {
+						result[prefixedFieldName] = rawValue
+					} else {
+						result[prefixedFieldName] = string(jsonBytes)
+					}
+					continue
 				}
-				continue
-			}
 
-			val, err := sanitize(fieldValue.Interface(), seen)
-			if err != nil {
-				return nil, err
+				val, err := sanitize(fieldValue.Interface(), seen)
+				if err != nil {
+					return nil, fmt.Errorf("failed to sanitize field %s: %w", prefixedFieldName, err)
+				}
+				result[prefixedFieldName] = val
+			} else {
+				// Field is unexported (private)
+				// Consistently format private fields as "FieldName [FieldTypeString]"
+				privateFieldValue := fmt.Sprintf("%s [%s]", field.Name, field.Type.String())
+				result[prefixedFieldName] = privateFieldValue
 			}
-			result[field.Name] = val
 		}
 		return result, nil
 
-	case reflect.Chan, reflect.Func, reflect.UnsafePointer:
-		return fmt.Sprintf("[%s]", v.Kind().String()), nil
+	case reflect.Chan:
+		chanType := v.Type()
+		typeString := chanType.String()
+		chanDetails := map[string]interface{}{}
+
+		if v.IsNil() {
+			chanDetails["is_nil"] = true
+			chanDetails["element_type"] = chanType.Elem().String()
+			chanDetails["direction"] = chanDirToString(chanType.ChanDir())
+			chanDetails["capacity"] = 0
+			chanDetails["length"] = 0
+		} else {
+			chanDetails["is_nil"] = false
+			chanDetails["element_type"] = chanType.Elem().String()
+			chanDetails["direction"] = chanDirToString(chanType.ChanDir())
+			chanDetails["capacity"] = v.Cap()
+			chanDetails["length"] = v.Len()
+		}
+
+		result := map[string]interface{}{
+			typeString: chanDetails,
+		}
+		return result, nil
+
+	case reflect.UnsafePointer:
+		if v.IsNil() {
+			return "[UnsafePointer (nil)]", nil
+		}
+		return fmt.Sprintf("[UnsafePointer 0x%x]", v.Pointer()), nil
+
+	case reflect.Func:
+		fnType := v.Type()
+		signature := fnType.String()
+
+		numIn := fnType.NumIn()
+		inTypes := make([]string, numIn)
+		for i := 0; i < numIn; i++ {
+			inTypes[i] = fnType.In(i).String()
+		}
+
+		numOut := fnType.NumOut()
+		outTypes := make([]string, numOut)
+		for i := 0; i < numOut; i++ {
+			outTypes[i] = fnType.Out(i).String()
+		}
+
+		funcDetails := map[string]interface{}{
+			"input_types":  inTypes,
+			"output_types": outTypes,
+			"is_variadic":  fnType.IsVariadic(),
+		}
+
+		result := map[string]interface{}{
+			signature: funcDetails,
+		}
+		return result, nil
 
 	default:
 		return data, nil
 	}
 }
 
-// SendTestable exposes stringified output for testing purposes.
-func SendTestable(payload interface{}) ([]byte, error) {
+func chanDirToString(dir reflect.ChanDir) string {
+	switch dir {
+	case reflect.SendDir:
+		return "send-only"
+	case reflect.RecvDir:
+		return "receive-only"
+	case reflect.BothDir:
+		return "send-receive"
+	default:
+		return "unknown"
+	}
+}
+
+// GoTestable handles a single payload for testing.
+func GoTestable(payload interface{}) ([]byte, error) {
 	return stringify(payload)
 }

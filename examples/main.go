@@ -10,7 +10,7 @@ func main() {
 }
 
 func basicExample() {
-	dbug.Send(map[string]interface{}{
+	dbug.Go(map[string]interface{}{
 		"message": "Hello from Go!",
 		"user": map[string]interface{}{
 			"id":    101,
@@ -20,5 +20,5 @@ func basicExample() {
 }
 
 func stringExample() {
-	dbug.Send("Hello from Go!")
+	dbug.Go("Hello from Go!")
 }
