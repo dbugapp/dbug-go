@@ -26,70 +26,15 @@ go get github.com/dbugapp/dbug-go
 
 ### Sending a Single Variable
 
-Simply pass any variable to `dbug.Go()`:
+Simply pass any variable to `dbug.Go()`.
 
-```go
-package main
-
-import (
-    "github.com/dbugapp/dbug-go/dbug"
-)
-
-type User struct {
-	ID int
-	Name string
-	IsActive bool
-	privateNotes string // Private fields are shown with type info
-}
-
-func main() {
-	currentUser := User{
-		ID: 123,
-		Name: "Alice",
-		IsActive: true,
-		privateNotes: "Needs follow-up",
-	}
-	// Send the user struct to the Dbug app
-	dbug.Go(currentUser)
-
-	myMap := map[string]any{"key": "value", "count": 42}
-	// Send the map to the Dbug app
-	dbug.Go(myMap)
-}
-```
+See the [examples/main.go](examples/main.go) file for a runnable example.
 
 ### Sending Multiple Variables
 
 The `Go` function accepts multiple arguments. Each argument is sent as a separate item to the Dbug app.
 
-```go
-package main
-
-import (
-	"fmt"
-	"github.com/dbugapp/dbug-go/dbug"
-)
-
-type Order struct {
-	ID string
-	Items []string
-	privateValue int // Private fields are shown with type info
-}
-
-func calculateTotal(o Order) float64 {
-	// Dummy calculation
-	return float64(len(o.Items) * 10)
-}
-
-func main() {
-	user := map[string]any{"id": 42, "role": "admin"}
-	order := Order{ID: "XYZ123", Items: []string{"item1", "item2"}, privateValue: 99}
-	message := "Processing order..."
-
-	// Send user, order, message, and function details
-	dbug.Go(user, order, message, calculateTotal)
-}
-```
+See the [examples/main.go](examples/main.go) file for a runnable example.
 
 ---
 
