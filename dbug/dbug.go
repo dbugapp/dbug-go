@@ -54,6 +54,9 @@ func Send(payloads ...interface{}) {
 			continue
 		}
 		// Successfully sent payload (or error payload)
+
+		// Add a small delay between sending payloads
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 
@@ -149,13 +152,9 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 				}
 				result[prefixedFieldName] = val
 			} else {
-				var privateFieldValue string
-				fieldType := field.Type
-				if fieldType.Kind() == reflect.Array {
-					privateFieldValue = fmt.Sprintf("%s:%d", field.Name, fieldType.Len())
-				} else {
-					privateFieldValue = fmt.Sprintf("%s", fieldType.String())
-				}
+				// Field is unexported (private)
+				// Consistently format private fields as "FieldName [FieldTypeString]"
+				privateFieldValue := fmt.Sprintf("%s [%s]", field.Name, field.Type.String())
 				result[prefixedFieldName] = privateFieldValue
 			}
 		}
@@ -189,7 +188,7 @@ func sanitize(data interface{}, seen map[uintptr]bool) (interface{}, error) {
 		if v.IsNil() {
 			return "[UnsafePointer (nil)]", nil
 		}
-		return fmt.Sprintf("[UnsafePointer %p]", v.Pointer()), nil
+		return fmt.Sprintf("[UnsafePointer 0x%x]", v.Pointer()), nil
 
 	case reflect.Func:
 		fnType := v.Type()
