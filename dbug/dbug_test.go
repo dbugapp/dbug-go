@@ -42,7 +42,7 @@ func TestVariadicSendPayloads(t *testing.T) {
 	payload2 := User{ID: 456, Email: "another@example.com"}
 	payload3 := 12345
 
-	dbug.Send(payload1, payload2, payload3)
+	dbug.Go(payload1, payload2, payload3)
 
 	mu.Lock()
 	require.Len(t, receivedBodies, 3, "Should have received 3 separate requests")

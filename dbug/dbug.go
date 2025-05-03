@@ -16,8 +16,8 @@ func SetEndpoint(url string) {
 	endpoint = url
 }
 
-// Send serializes and sends each payload individually to the debug app.
-func Send(payloads ...interface{}) {
+// Go serializes and sends each payload individually to the Dbug app.
+func Go(payloads ...interface{}) {
 	// Create a single client to reuse for multiple payloads in one call
 	client := http.Client{Timeout: 500 * time.Millisecond}
 
