@@ -5,6 +5,8 @@
 
 Send data from your running Go application directly to the [Dbug desktop app](https://github.com/dbugapp/desktop) for live inspection. This package makes it trivial to visualize the state of your Go variables and data structures without interrupting your program.
 
+![Dbug Desktop Go Example](dbug-desktop-go.png)
+
 ---
 
 ## Features
