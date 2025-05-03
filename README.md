@@ -24,17 +24,7 @@ go get github.com/dbugapp/dbug-go
 
 ## Usage
 
-### Sending a Single Variable
-
-Simply pass any variable to `dbug.Go()`.
-
-See the [examples/main.go](examples/main.go) file for a runnable example.
-
-### Sending Multiple Variables
-
-The `Go` function accepts multiple arguments. Each argument is sent as a separate item to the Dbug app.
-
-See the [examples/main.go](examples/main.go) file for a runnable example.
+https://github.com/dbugapp/dbug-go/blob/4f8ba69a063dcfb16d714609d34e916b16deb87d/examples/main.go#L1-L35
 
 ---
 
