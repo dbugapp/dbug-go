@@ -1,21 +1,19 @@
-# Dbug Go SDK
+# Dbug Go Agent
 
-[![Go Test](https://github.com/dbugapp/dbug-go/actions/workflows/test.yml/badge.svg)](https://github.com/dbugapp/dbug-go/actions/workflows/test.yml)
+[![Test](https://github.com/dbugapp/dbug-go/actions/workflows/test.yml/badge.svg)](https://github.com/dbugapp/dbug-go/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-Send debug payloads from Go to the [dbug desktop app](https://github.com/dbugapp/desktop). The `dbug-go` SDK lets you send structured debug information from your Go application to the local `dbug` desktop app for live inspection.
+Send debug data from your Go application to the [Dbug desktop app](https://github.com/dbugapp/desktop) for live inspection. This package acts as a lightweight agent, making it trivial to visualize the state of your Go variables and data structures.
 
 ---
 
 ## Features
 
-- Serializes Go data structures to JSON, aiming to capture maximum detail.
-- Handles common serialization errors and circular references.
-- Sends multiple payloads in a single call using variadic `Send` function.
-- Provides detailed introspection for functions (signature, params, returns) and channels (direction, buffer, length).
-- Includes information about private struct fields (name and type).
-- Sends payloads over HTTP to the dbug desktop app with a small delay between multiple payloads.
-- Customizable endpoint for development flexibility.
+- **Simple Interface:** Just call `dbug.Send()` with almost any Go variable, struct, map, slice, or other data type.
+- **Variadic Sending:** Send multiple different variables in a single `dbug.Send()` call; each will appear separately in the Dbug app.
+- **Intelligent Serialization:** Automatically converts your Go data into a detailed, readable JSON format suitable for visualization, handling complex types, pointers, and circular references.
+- **Zero Configuration (Default):** Works out-of-the-box by sending data to the default Dbug desktop app endpoint (`http://127.0.0.1:53821`).
+- **Customizable Endpoint:** Optionally configure a different endpoint if needed.
 
 ---
 
@@ -29,9 +27,9 @@ go get github.com/dbugapp/dbug-go
 
 ## Usage
 
-### Basic Example
+### Sending a Single Variable
 
-Send a single payload:
+Simply pass any variable to `dbug.Send()`:
 
 ```go
 package main
@@ -40,20 +38,30 @@ import (
     "github.com/dbugapp/dbug-go/dbug"
 )
 
+type User struct {
+	ID int
+	Name string
+	IsActive bool
+	privateNotes string // Private fields are shown with type info
+}
+
 func main() {
-    dbug.Send(map[string]interface{}{
-        "event": "user.registered",
-        "user": map[string]interface{}{
-            "id":    123,
-            "email": "user@example.com",
-        },
-    })
+	currentUser := User{
+		ID: 123,
+		Name: "Alice",
+		IsActive: true,
+		privateNotes: "Needs follow-up",
+	}
+	dbug.Send(currentUser)
+
+	myMap := map[string]any{"key": "value", "count": 42}
+	dbug.Send(myMap)
 }
 ```
 
-### Sending Multiple Payloads
+### Sending Multiple Variables
 
-The `Send` function accepts multiple arguments. Each argument is serialized and sent as a separate payload to the Dbug app.
+The `Send` function accepts multiple arguments. Each argument is sent as a separate payload to the Dbug app.
 
 ```go
 package main
@@ -66,26 +74,25 @@ import (
 type Order struct {
 	ID string
 	Items []string
-	privateNote string // Will be shown with type info
+	privateValue int // Private fields are shown with type info
 }
 
-func processOrder(o Order) error {
-	fmt.Printf("Processing %s\n", o.ID)
-	// ... processing logic ...
-	return nil
+func calculateTotal(o Order) float64 {
+	// Dummy calculation
+	return float64(len(o.Items) * 10)
 }
 
 func main() {
 	user := map[string]any{"id": 42, "role": "admin"}
-	order := Order{ID: "XYZ123", Items: []string{"item1", "item2"}, privateNote: "urgent"}
-	message := "Processing complete."
+	order := Order{ID: "XYZ123", Items: []string{"item1", "item2"}, privateValue: 99}
+	message := "Processing order..."
 
 	// Send user, order, message, and function details as separate payloads
-	dbug.Send(user, order, message, processOrder)
+	dbug.Send(user, order, message, calculateTotal)
 }
 ```
 
-This sends four separate payloads to the default dbug server at `http://127.0.0.1:53821`.
+This sends four separate payloads to the default Dbug server at `http://127.0.0.1:53821`.
 
 ---
 
@@ -95,13 +102,9 @@ You can change the target endpoint using `SetEndpoint()`:
 
 ```go
 dbug.SetEndpoint("http://localhost:54000")
-dbug.Send(map[string]interface{}{
-    "event": "order.completed",
-    "order": map[string]interface{}{
-        "id":     98765,
-        "amount": 49.99,
-    },
-})
+
+data := []int{1, 2, 3}
+dbug.Send(data)
 ```
 
 ---
