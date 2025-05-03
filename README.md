@@ -11,9 +11,7 @@ Send debug data from your Go application to the [Dbug desktop app](https://githu
 
 - **Simple Interface:** Just call `dbug.Send()` with almost any Go variable, struct, map, slice, or other data type.
 - **Variadic Sending:** Send multiple different variables in a single `dbug.Send()` call; each will appear separately in the Dbug app.
-- **Intelligent Serialization:** Automatically converts your Go data into a detailed, readable JSON format suitable for visualization, handling complex types, pointers, and circular references.
 - **Zero Configuration (Default):** Works out-of-the-box by sending data to the default Dbug desktop app endpoint (`http://127.0.0.1:53821`).
-- **Customizable Endpoint:** Optionally configure a different endpoint if needed.
 
 ---
 
@@ -95,20 +93,6 @@ func main() {
 This sends four separate payloads to the default Dbug server at `http://127.0.0.1:53821`.
 
 ---
-
-### Custom Endpoint
-
-You can change the target endpoint using `SetEndpoint()`:
-
-```go
-dbug.SetEndpoint("http://localhost:54000")
-
-data := []int{1, 2, 3}
-dbug.Send(data)
-```
-
----
-
 
 ## License
 
