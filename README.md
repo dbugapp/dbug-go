@@ -26,7 +26,7 @@ go get github.com/dbugapp/dbug-go
 
 ## Usage
 
-https://github.com/dbugapp/dbug-go/blob/main/examples/main.go#L21-L28
+https://github.com/dbugapp/dbug-go/blob/9275c58118267f268ff5f40173fbc3f13d976049/examples/main.go#L21-L28
 
 ---
 
