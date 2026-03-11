@@ -16,47 +16,50 @@ func SetEndpoint(url string) {
 	endpoint = url
 }
 
-// Go serializes and sends each payload individually to the Dbug app.
+// Go serializes and sends all payloads to the Dbug app in a single request.
+// Multiple payloads are sent as a JSON array and appear stacked in one cell.
 func Go(payloads ...interface{}) {
-	// Create a single client to reuse for multiple payloads in one call
+	if len(payloads) == 0 {
+		return
+	}
+
+	var jsonBytes []byte
+	var err error
+
+	if len(payloads) == 1 {
+		jsonBytes, err = stringify(payloads[0])
+	} else {
+		sanitized := make([]interface{}, len(payloads))
+		for i, payload := range payloads {
+			sanitized[i], err = sanitize(payload, map[uintptr]bool{})
+			if err != nil {
+				sanitized[i] = map[string]string{
+					"_error_":  "Serialization failed during Send",
+					"_reason_": err.Error(),
+				}
+				err = nil
+			}
+		}
+		jsonBytes, err = json.MarshalIndent(sanitized, "", "  ")
+	}
+
+	if err != nil {
+		jsonBytes, _ = json.MarshalIndent(map[string]string{
+			"_error_":  "Serialization failed during Send",
+			"_reason_": err.Error(),
+		}, "", "  ")
+	}
+
 	client := http.Client{Timeout: 500 * time.Millisecond}
-
-	for _, payload := range payloads {
-		var jsonBytes []byte
-		var err error
-
-		// Attempt to stringify the current payload
-		jsonBytes, err = stringify(payload)
-		if err != nil {
-			// If stringify fails, create an error payload instead
-			jsonBytes, _ = json.MarshalIndent(map[string]string{
-				"_error_":  "Serialization failed during Send",
-				"_reason_": err.Error(),
-				// Maybe add type info if payload isn't nil?
-				// "_type_": reflect.TypeOf(payload).String(),
-			}, "", "  ")
-			// Note: We proceed to send this error payload
-		}
-
-		// Create and send the request for the current payload (or error payload)
-		req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBytes))
-		if err != nil {
-			// Log error creating request and continue to next payload
-			fmt.Printf("Dbug: Error creating request: %v\n", err)
-			continue
-		}
-
-		req.Header.Set("Content-Type", "application/json")
-		_, err = client.Do(req)
-		if err != nil {
-			// Log error sending request and continue to next payload
-			fmt.Printf("Dbug: Error sending request: %v\n", err)
-			continue
-		}
-		// Successfully sent payload (or error payload)
-
-		// Add a small delay between sending payloads
-		time.Sleep(5 * time.Millisecond)
+	req, err := http.NewRequest("POST", endpoint, bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		fmt.Printf("Dbug: Error creating request: %v\n", err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	_, err = client.Do(req)
+	if err != nil {
+		fmt.Printf("Dbug: Error sending request: %v\n", err)
 	}
 }
 

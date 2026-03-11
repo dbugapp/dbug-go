@@ -38,31 +38,30 @@ func TestVariadicSendPayloads(t *testing.T) {
 
 	dbug.SetEndpoint(server.URL)
 
-	payload1 := map[string]interface{}{ "msg": "first" }
+	payload1 := map[string]interface{}{"msg": "first"}
 	payload2 := User{ID: 456, Email: "another@example.com"}
 	payload3 := 12345
 
 	dbug.Go(payload1, payload2, payload3)
 
 	mu.Lock()
-	require.Len(t, receivedBodies, 3, "Should have received 3 separate requests")
+	require.Len(t, receivedBodies, 1, "Should have received 1 combined request")
 
-	var parsed1 map[string]interface{}
-	err := json.Unmarshal(receivedBodies[0], &parsed1)
+	var parsed []interface{}
+	err := json.Unmarshal(receivedBodies[0], &parsed)
 	require.NoError(t, err)
+	require.Len(t, parsed, 3, "Should have 3 items in the array")
+
+	parsed1, ok := parsed[0].(map[string]interface{})
+	require.True(t, ok)
 	assert.Equal(t, "first", parsed1["msg"])
 
-	var parsed2 map[string]interface{}
-	err = json.Unmarshal(receivedBodies[1], &parsed2)
-	require.NoError(t, err)
-	// Check struct fields - note the key prefixing
+	parsed2, ok := parsed[1].(map[string]interface{})
+	require.True(t, ok)
 	assert.Equal(t, float64(456), parsed2["dbug_test.User.ID"], "ID should match")
 	assert.Equal(t, "another@example.com", parsed2["dbug_test.User.Email"], "Email should match")
 
-	var parsed3 interface{}
-	err = json.Unmarshal(receivedBodies[2], &parsed3)
-	require.NoError(t, err)
-	assert.Equal(t, float64(12345), parsed3, "Third payload should be the integer")
+	assert.Equal(t, float64(12345), parsed[2], "Third payload should be the integer")
 	mu.Unlock()
 }
 

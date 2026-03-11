@@ -8,7 +8,7 @@ type User struct {
 	ID           int
 	Name         string
 	IsActive     bool
-	privateNotes string 
+	privateNotes string
 }
 
 func main() {
