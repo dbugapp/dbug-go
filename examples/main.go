@@ -11,19 +11,26 @@ type User struct {
 	privateNotes string
 }
 
+type Order struct {
+	OrderID  string
+	Total    float64
+	Shipped  bool
+}
+
 func main() {
+	// Single payload — one cell
+	dbug.Go("single string")
+
+	// Multiple payloads — all stacked in one cell
 	currentUser := User{
 		ID:           123,
 		Name:         "Alice",
 		IsActive:     true,
 		privateNotes: "Needs follow-up",
 	}
-	dbug.Go(currentUser)
+	order := Order{OrderID: "ORD-999", Total: 49.95, Shipped: false}
+	tags := []string{"vip", "trial"}
+	meta := map[string]any{"source": "web", "version": 2}
 
-	myMap := map[string]any{"key": "value", "count": 42}
-	dbug.Go(myMap)
-
-	message := "Finished examples."
-	status := 200
-	dbug.Go(message, status)
+	dbug.Go(currentUser, order, tags, meta)
 }
